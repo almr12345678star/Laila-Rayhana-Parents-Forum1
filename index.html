@@ -278,22 +278,50 @@ $("#mk").onclick=()=>report(false);$("#pv").onclick=()=>report(true);
 var $=function(i){return document.getElementById(i)};
 var rows=[];
 function esc(s){var t=document.createElement('div');t.textContent=s==null?'':s;return t.innerHTML}
+
 $('pr-send').onclick=async function(){
   var pk=picked?picked.split('#'):null;
-  var d={name:$('pr-name').value.trim(),tel:$('pr-tel').value.trim(),mt:$('pr-mt').value.trim(),
-    cls:pk?GR[pk[0].split('-')[0]]+' — '+ad(pk[0].split('-')[1]):'',stu:pk?DATA[pk[0]][+pk[1]]:'',k:pk?pk[0]:'',i:pk?Number(pk[1]):-1,st:$('pr-st').value.trim()};
-  if(!d.name||!d.tel||!d.mt||!d.cls||!d.stu||!d.st){$('pr-err').textContent='فضلاً أكملي جميع الحقول، واختاري الطالبة من نتائج البحث';return}
-  $('pr-err').textContent='';
+
+  var d={
+    name:$('pr-name').value.trim(),
+    tel:$('pr-tel').value.trim(),
+    mt:$('pr-mt').value.trim(),
+    cls:pk?GR[pk[0].split('-')[0]]+' — '+ad(pk[0].split('-')[1]):'',
+    stu:pk?DATA[pk[0]][+pk[1]]:'',
+    k:pk?pk[0]:'',
+    i:pk?Number(pk[1]):-1,
+    st:$('pr-st').value.trim()
+  };
+
+  if(!d.name||!d.tel||!d.mt||!d.cls||!d.stu||!d.st){
+    $('pr-err').textContent='فضلاً أكملي جميع الحقول واختاري الطالبة';
+    return;
+  }
+
+  $('pr-send').disabled=true;
+  $('pr-err').textContent='جارٍ إرسال التسجيل...';
+
   try{
-    var db=await claude.use('db');
-    if(!db){$('pr-err').textContent='تعذّر الاتصال، حاولي لاحقاً';return}
-    var u=await claude.use('user');
-    var id=u?await u.id():('g'+Date.now());
-    d.at=new Date().toISOString();
-    await db.collection('parents').doc(id).set(d);
-    $('pr-form').style.display='none';$('pr-ok').style.display='block';var fid=picked;$('pr-frm').onclick=function(){form(fid)};
-  }catch(e){$('pr-err').textContent='تعذّر التسجيل، تأكدي من الاتصال'}
+    await fetch(
+      'https://script.google.com/macros/s/AKfycbxIUNGWgtTwXKVbASAzCZVOnRDIUJbgfZ-cDKjDLBk4N0nOyaAMLxXrh_e8xiKEaREp/exec',
+      {
+        method:'POST',
+        mode:'no-cors',
+        headers:{'Content-Type':'text/plain;charset=utf-8'},
+        body:JSON.stringify(d)
+      }
+    );
+
+    $('pr-err').textContent=
+      'تم إرسال طلب التسجيل. يرجى التحقق من وصوله إلى سجل الحضور.';
+      
+  }catch(e){
+    $('pr-err').textContent='تعذر إرسال التسجيل. تحققي من الاتصال وحاولي مجدداً.';
+  }
+
+  $('pr-send').disabled=false;
 };
+
 async function admin(){
   try{
     var u=await claude.use('user'),db=await claude.use('db');
