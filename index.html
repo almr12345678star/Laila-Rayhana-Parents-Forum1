@@ -206,14 +206,61 @@ const onAct=e=>{const b=e.target.closest("button");if(!b)return;if(b.dataset.for
 $("#res").onclick=onAct;$("#pr-pick").onclick=onAct;
 cls.onchange=()=>{$("#q").value="";render()};$("#q").oninput=render;
 function counts(src){const out={};keys.forEach(k=>{out[k]=src(k)});return out}
-function stats(){
-  const tot=keys.reduce((a,k)=>a+DATA[k].length,0),att=Object.keys(rec).length;
-  $("#stat").innerHTML=`<div><strong>${ad(tot)}</strong>إجمالي الطالبات</div><div><strong>${ad(att)}</strong>حضور مسجّل</div><div><strong>${ad(tot?Math.round(att*100/tot):0)}٪</strong>نسبة الحضور</div>`;
-  const open=true,m=$("#lockmsg");
-  m.className="lock"+(open?"":" wait");
-  m.textContent=open?"السجل الرسمي متاح الآن للإعداد والطباعة.":"السجل الرسمي يُتاح بعد الساعة ٤:٠٠ مساءً يوم الثلاثاء ٢٤ نوفمبر ٢٠٢٦.";
-  $("#mk").disabled=!open;$("#mk").style.opacity=open?1:.5;
+
+async function stats(){
+  try {
+    const response = await fetch(
+      'https://script.google.com/macros/s/AKfycbxIUNGWgtTwXKVbASAzCZVOnRDIUJbgfZ-cDKjDLBk4N0nOyaAMLxXrh_e8xiKEaREp/exec'
+    );
+
+    const result = await response.json();
+    if (!result.success) throw new Error("تعذر تحميل البيانات");
+
+    const counts = result.counts || {};
+    const tot = keys.reduce((a,k)=>a+DATA[k].length,0);
+    const att = Number(result.total || 0);
+    const pc = tot ? Math.round(att*100/tot) : 0;
+
+    let chart = '<h3>الحضور حسب الصف والشعبة</h3>';
+
+    keys.forEach(k=>{
+      const [g,s] = k.split("-");
+     const label = GR[g] + " — " + String(s).replace(/[0-9]/g, d => "٠١٢٣٤٥٦٧٨٩"[d]);
+     const a = Number(counts[label] || 0);
+      const n = DATA[k].length;
+      const p = n ? Math.round(a*100/n) : 0;
+
+      chart += `
+        <div style="margin:12px 0">
+          <div style="display:flex;justify-content:space-between">
+            <b>${label}</b>
+            <span>${ad(a)} من ${ad(n)} (${ad(p)}٪)</span>
+          </div>
+          <div style="height:12px;background:#ffffff25;border-radius:10px;overflow:hidden">
+            <div style="height:100%;width:${Math.min(100,p)}%;background:#fcbd2d;border-radius:10px"></div>
+          </div>
+        </div>`;
+    });
+
+    $("#stat").innerHTML = `
+      <div><strong>${ad(tot)}</strong>إجمالي الطالبات</div>
+      <div><strong>${ad(att)}</strong>حضور مسجّل</div>
+      <div><strong>${ad(pc)}٪</strong>نسبة الحضور</div>
+      ${chart}
+    `;
+
+    const m = $("#lockmsg");
+    m.className = "lock";
+    m.textContent = "السجل الرسمي متاح الآن للإعداد والطباعة.";
+    $("#mk").disabled = false;
+    $("#mk").style.opacity = 1;
+
+  } catch(error) {
+    console.log(error);
+    $("#stat").textContent = "تعذر تحميل إحصائيات الحضور.";
+  }
 }
+
 function closeRep(){$("#rep").style.display="none"}
 async function makePdf(){
   const rp=$("#rep").cloneNode(true);rp.querySelectorAll(".bar").forEach(x=>x.remove());
